@@ -74,6 +74,7 @@ class Local_node_manager:
                     adjacent_matrix[i, index] = 0
 
         utility = np.array(utility)
+        direction_vector = np.array(direction_vector)
 
         indices = np.argwhere(utility > 0).reshape(-1)
         utility_node_coords = all_node_coords[indices]

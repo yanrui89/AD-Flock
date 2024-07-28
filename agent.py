@@ -99,7 +99,7 @@ class Agent:
         local_node_utility = self.utility.reshape(-1, 1)
         local_node_guidepost = self.guidepost.reshape(-1, 1)
         local_node_occupancy = self.occupancy.reshape(-1, 1)
-        direction_vectors = self.direction_vectors.reshape(-1,1)
+        direction_vectors = self.direction_vectors.reshape(-1,3)
         direction_vectors[:,2] /= 80
         current_local_index = self.current_local_index
         local_edge_mask = self.local_adjacent_matrix
