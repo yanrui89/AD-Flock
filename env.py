@@ -30,10 +30,16 @@ class Env:
         self.robot_belief = sensor_work(initial_cell, self.sensor_range / self.cell_size, self.robot_belief,
                                         self.ground_truth)
         self.belief_info = Map_info(self.robot_belief, self.belief_origin_x, self.belief_origin_y, self.cell_size)
-
+        self.ground_truth_info = Map_info(self.ground_truth, self.belief_origin_x, self.belief_origin_y, self.cell_size)
+        ground_truth_free, _ = get_local_node_coords(np.array([0.0, 0.0]), self.ground_truth_info)
         free, _ = get_local_node_coords(np.array([0.0, 0.0]), self.belief_info)  #Free space nodes in meters. This 
         choice = np.random.choice(free.shape[0], N_AGENTS, replace=False)
         starts = free[choice]
+        
+        mean_starts = np.mean(starts, axis = 0)
+        possible_target_idx = np.array(np.argwhere(np.linalg.norm(ground_truth_free - mean_starts, axis = 1))).squeeze()
+        target_idx = np.random.choice(possible_target_idx)
+        self.target = ground_truth_free[target_idx]
         self.robot_locations = np.array(starts)
 
         robot_cells = get_cell_position_from_coords(self.robot_locations, self.belief_info)  #robot_cells is robot position in pixel coordinate
@@ -71,6 +77,16 @@ class Env:
     def update_robot_belief(self, robot_cell):
         self.robot_belief = sensor_work(robot_cell, round(self.sensor_range / self.cell_size), self.robot_belief,
                                         self.ground_truth)
+        
+    def calculate_ind_nav_reward(self, astar_dist_cur_to_target, astar_dist_next_to_target, dist_to_target):
+        reward = 0
+        done = False
+        reward -= 0.5
+        reward += (astar_dist_cur_to_target - astar_dist_next_to_target) / (self.ground_truth.shape[0] * self.cell_size/10)
+        if dist_to_target <= 10:
+            reward += 20
+            done = True
+        return reward, done
 
     def calculate_reward(self):
         reward = 0

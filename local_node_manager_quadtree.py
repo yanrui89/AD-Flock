@@ -10,7 +10,7 @@ class Local_node_manager:
     def __init__(self, plot=False):
         self.local_nodes_dict = quads.QuadTree((0, 0), 1000, 1000)
         self.plot = plot
-        self.target = [0,0] # to change
+        self.target = None
         if self.plot:
             self.x = []
             self.y = []
@@ -51,6 +51,24 @@ class Local_node_manager:
             plot_x = self.x if self.plot else None
             plot_y = self.y if self.plot else None
             node.update_neighbor_nodes(extended_local_map_info, self.local_nodes_dict, plot_x, plot_y)
+
+    def update_ground_truth_graph(self, ground_truth_map_info):
+        ground_truth_node_coords, _ = get_local_node_coords(np.array([[0,0]]), ground_truth_map_info)
+
+        for coords in ground_truth_node_coords:
+            node = self.check_node_exist_in_dict(coords)
+            if node is None:
+                self.add_node_to_dict(coords, None, ground_truth_map_info, self.target)
+            else:
+                pass
+
+        for coords in ground_truth_node_coords:
+            node = self.local_nodes_dict.find((coords[0], coords[1])).data
+
+            plot_x = self.x if self.plot else None
+            plot_y = self.y if self.plot else None
+            node.update_neighbor_nodes(ground_truth_map_info, self.local_nodes_dict, plot_x, plot_y)
+
 
     def get_all_node_graph(self, robot_location, robot_locations):
         all_node_coords = []
@@ -242,9 +260,11 @@ class Local_node:
     def __init__(self, coords, local_frontiers, extended_local_map_info, target):
         self.coords = coords
         self.utility_range = UTILITY_RANGE
-        self.observable_frontiers = self.initialize_observable_frontiers(local_frontiers, extended_local_map_info)
-        self.utility = self.observable_frontiers.shape[0] if self.observable_frontiers.shape[0] > MIN_UTILITY else 0
-        self.utility_share = [self.utility]
+        self.local_frontiers = local_frontiers
+        if np.any(local_frontiers != None):
+            self.observable_frontiers = self.initialize_observable_frontiers(local_frontiers, extended_local_map_info)
+            self.utility = self.observable_frontiers.shape[0] if self.observable_frontiers.shape[0] > MIN_UTILITY else 0
+            self.utility_share = [self.utility]
         self.visited = 0
         self.target = target
         self.direction_vect = self.get_direction_vector()
@@ -316,11 +336,11 @@ class Local_node:
                             if plot_x is not None and plot_y is not None:
                                 plot_x.append([self.coords[0], neighbor_coords[0]])
                                 plot_y.append([self.coords[1], neighbor_coords[1]])
-
-        if self.utility == 0:
-            self.need_update_neighbor = False
-        elif np.sum(self.neighbor_matrix) == self.neighbor_matrix.shape[0] ** 2:
-            self.need_update_neighbor = False
+        if np.any(self.local_frontiers != None):
+            if self.utility == 0:
+                self.need_update_neighbor = False
+            elif np.sum(self.neighbor_matrix) == self.neighbor_matrix.shape[0] ** 2:
+                self.need_update_neighbor = False
         # print(self.neighbor_matrix)
 
     def update_node_observable_frontiers(self, local_frontiers, extended_local_map_info):

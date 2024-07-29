@@ -18,7 +18,7 @@ def get_cell_position_from_coords(coords, map_info):
     cell_x = ((coords_x - map_info.map_origin_x) / map_info.cell_size)
     cell_y = ((coords_y - map_info.map_origin_y) / map_info.cell_size)
 
-    cell_position = np.around(np.stack((cell_x, cell_y), axis=-1)).astype(int)
+    cell_position = np.around(np.stack((cell_x, cell_y), axis=-1)).astype(int)  #Getting the pixel coordinate
     # assert False not in (cell_position.flatten() >= 0)
     if cell_position.shape[0] == 1:
         return cell_position[0]
@@ -95,7 +95,7 @@ def get_local_node_coords(location, local_map_info):
     free_connected_map = get_free_and_connected_map(location, local_map_info)
 
     indices = []
-    nodes_cells = get_cell_position_from_coords(nodes, local_map_info)
+    nodes_cells = get_cell_position_from_coords(nodes, local_map_info) #All nodes in pixel coordinate
     for i, cell in enumerate(nodes_cells):
         if free_connected_map[cell[1], cell[0]] == 1:
             indices.append(i)

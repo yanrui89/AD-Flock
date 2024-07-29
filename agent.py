@@ -20,6 +20,7 @@ class Agent:
         # location and global map
         self.location = None
         self.global_map_info = None
+        self.ground_truth_map_info = None
         self.local_center = None
 
         # local map related parameters
@@ -53,10 +54,18 @@ class Agent:
             self.trajectory_x = []
             self.trajectory_y = []
 
+        self.target = None
+
+    def update_target(self, target):
+        self.target = target
+        self.local_node_manager.target = target
 
     def update_global_map(self, global_map_info):
         # no need in training because of shallow copy
         self.global_map_info = global_map_info
+
+    def update_ground_truth_map(self, ground_truth_map_info):
+        self.ground_truth_map_info = ground_truth_map_info
 
     def update_local_map(self):
         self.local_map_info = self.get_local_map(self.location)
@@ -89,6 +98,11 @@ class Agent:
                                                    self.local_frontier,
                                                    self.local_map_info,
                                                    self.extended_local_map_info)
+        
+    def update_ground_truth_graph(self, ground_truth_map_info):
+        self.update_ground_truth_map(ground_truth_map_info=ground_truth_map_info)
+        self.local_node_manager.update_ground_truth_graph(ground_truth_map_info)
+
 
     def update_planning_state(self, robot_locations):
         self.local_node_coords, self.utility, self.guidepost, self.occupancy, self.local_adjacent_matrix, self.current_local_index, self.local_neighbor_indices, self.direction_vectors = \

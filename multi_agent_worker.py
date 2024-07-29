@@ -24,6 +24,11 @@ class Multi_agent_worker:
         self.env = Env(global_step, plot=self.save_image)
         self.n_agent = N_AGENTS
         self.local_node_manager = Local_node_manager(plot=self.save_image)
+        self.ground_truth_node_manager = Local_node_manager(plot=False)
+
+        self.ground_truth_agent = Agent(100, policy_net, self.ground_truth_node_manager, self.device, False)
+        self.ground_truth_agent.update_target(self.env.target)
+        self.ground_truth_agent.update_ground_truth_graph(self.env.ground_truth_info)
 
         self.robot_list = [Agent(i, policy_net, self.local_node_manager, self.device, self.save_image) for i in
                            range(N_AGENTS)]
@@ -36,7 +41,9 @@ class Multi_agent_worker:
     def run_episode(self):
         done = False
         for robot in self.robot_list:
+            robot.update_target(self.env.target)
             robot.update_graph(self.env.belief_info, deepcopy(self.env.robot_locations[robot.id]))
+            
         for robot in self.robot_list:    
             robot.update_planning_state(self.env.robot_locations)
 
@@ -50,7 +57,6 @@ class Multi_agent_worker:
 
                 next_location, next_node_index, action_index = robot.select_next_waypoint(local_observation)
                 robot.save_action(action_index)
-
                 node = robot.local_node_manager.local_nodes_dict.find((robot.location[0], robot.location[1]))
                 check = np.array(node.data.neighbor_list)
                 assert next_location[0] + next_location[1] * 1j in check[:, 0] + check[:, 1] * 1j, print(next_location,
@@ -84,10 +90,17 @@ class Multi_agent_worker:
 
             reward_list = []
             robot_location = []
-            for robot, next_location, next_node_index in zip(self.robot_list, selected_locations, next_node_index_list):
+            ind_done_list = []
+            for robot, next_location, next_node_index in zip(self.robot_list, selected_locations, next_node_index_list):  #TODO: Need to think what to add in the reward
                 self.env.step(next_location, robot.id)
                 individual_reward = robot.utility[next_node_index] / 50
-                reward_list.append(individual_reward)
+                _, astar_dist_cur_to_target = self.ground_truth_agent.local_node_manager.a_star(robot.location, robot.target)
+                _, astar_dist_next_to_target = self.ground_truth_agent.local_node_manager.a_star(next_location, robot.target)
+                dist_to_target = np.linalg.norm(next_location - robot.target)
+                ind_nav_rew, ind_done = self.env.calculate_ind_nav_reward(astar_dist_cur_to_target, astar_dist_next_to_target, dist_to_target)
+                ind_done_list.append(ind_done)
+                total_reward = individual_reward + ind_nav_rew
+                reward_list.append(total_reward)
 
                 # FIXME Extract robot.location in an empty array
                 # Compute the np.mean
@@ -96,12 +109,14 @@ class Multi_agent_worker:
 
                 robot.update_graph(self.env.belief_info, deepcopy(self.env.robot_locations[robot.id]))
 
-            if self.robot_list[0].utility.sum() == 0: # FIXME change to check location of centroid to goal point
+            # if self.robot_list[0].utility.sum() == 0: # FIXME change to check location of centroid to goal point
+            #     done = True
+            if np.sum(ind_done) == self.n_agent:
                 done = True
 
             team_reward = self.env.calculate_reward() - 0.5
             if done:
-                team_reward += 10
+                team_reward += 40
 
             for robot, reward in zip(self.robot_list, reward_list):
                 robot.save_reward(reward + team_reward)

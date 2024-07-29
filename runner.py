@@ -40,7 +40,7 @@ class Runner(object):
         return job_results, metrics, info
 
 
-# @ray.remote(num_cpus=1, num_gpus=NUM_GPU / NUM_META_AGENT)
+@ray.remote(num_cpus=1, num_gpus=NUM_GPU / NUM_META_AGENT)
 class RLRunner(Runner):
     def __init__(self, meta_agent_id):
         super().__init__(meta_agent_id)
