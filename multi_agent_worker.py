@@ -23,8 +23,8 @@ class Multi_agent_worker:
 
         self.env = Env(global_step, plot=self.save_image)
         self.n_agent = N_AGENTS
-        self.local_node_manager = Local_node_manager(plot=self.save_image)
-        self.ground_truth_node_manager = Local_node_manager(plot=False)
+        self.local_node_manager = Local_node_manager(plot=self.save_image, modality="Local")
+        self.ground_truth_node_manager = Local_node_manager(plot=False, modality="Groundtruth")
 
         self.ground_truth_agent = Agent(100, policy_net, self.ground_truth_node_manager, self.device, False)
         self.ground_truth_agent.update_target(self.env.target)
@@ -90,6 +90,7 @@ class Multi_agent_worker:
 
             reward_list = []
             robot_location = []
+            robot_dist = 0
             ind_done_list = []
             for robot, next_location, next_node_index in zip(self.robot_list, selected_locations, next_node_index_list):  #TODO: Need to think what to add in the reward
                 self.env.step(next_location, robot.id)
@@ -97,8 +98,9 @@ class Multi_agent_worker:
                 _, astar_dist_cur_to_target = self.ground_truth_agent.local_node_manager.a_star(robot.location, robot.target)
                 _, astar_dist_next_to_target = self.ground_truth_agent.local_node_manager.a_star(next_location, robot.target)
                 dist_to_target = np.linalg.norm(next_location - robot.target)
-                ind_nav_rew, ind_done = self.env.calculate_ind_nav_reward(astar_dist_cur_to_target, astar_dist_next_to_target, dist_to_target)
-                ind_done_list.append(ind_done)
+                robot_dist += dist_to_target
+                ind_nav_rew = self.env.calculate_ind_nav_reward(astar_dist_cur_to_target, astar_dist_next_to_target, dist_to_target)
+                # ind_done_list.append(ind_done)
                 total_reward = individual_reward + ind_nav_rew
                 reward_list.append(total_reward)
 
@@ -111,7 +113,11 @@ class Multi_agent_worker:
 
             # if self.robot_list[0].utility.sum() == 0: # FIXME change to check location of centroid to goal point
             #     done = True
-            if np.sum(ind_done) == self.n_agent:
+            # if np.sum(ind_done) == self.n_agent:
+            #     done = True
+            # print(robot_dist/len(self.robot_list))
+            check_condition = robot_dist/len(self.robot_list)
+            if check_condition <= 1:
                 done = True
 
             team_reward = self.env.calculate_reward() - 0.5
@@ -124,11 +130,11 @@ class Multi_agent_worker:
                 robot.save_done(done)
 
             if self.save_image:
-                self.plot_local_env(i)
+                self.plot_local_env(i, check_condition)
 
             if done:
                 if self.save_image:
-                    self.plot_local_env(i + 1)
+                    self.plot_local_env(i + 1, check_condition)
                 break
 
         # save metrics
@@ -147,7 +153,7 @@ class Multi_agent_worker:
         if self.save_image:
             make_gif(gifs_path, self.global_step, self.env.frame_files, self.env.explored_rate)
 
-    def plot_local_env(self, step):
+    def plot_local_env(self, step, check_condition):
         plt.switch_backend('agg')
         plt.figure(figsize=(15, 5))
         plt.subplot(1, 2, 2)
@@ -156,6 +162,8 @@ class Multi_agent_worker:
         color_list = ['r', 'b', 'g', 'y']
         frontiers = get_frontier_in_map(self.env.belief_info)
         frontiers = get_cell_position_from_coords(frontiers, self.env.belief_info).reshape(-1, 2)
+        target_cell = get_cell_position_from_coords(self.env.target, self.env.ground_truth_info).reshape(-1, 2)
+        plt.scatter(target_cell[:,0], target_cell[:,1], c='b', s=5)
         plt.scatter(frontiers[:, 0], frontiers[:, 1], c='r', s=1)
         for robot in self.robot_list:
             c = color_list[robot.id]
@@ -180,12 +188,12 @@ class Multi_agent_worker:
                 plt.scatter(nodes[:, 0], nodes[:, 1], c=robot.utility, zorder=2)
 
             robot_cell = get_cell_position_from_coords(robot.location, robot.global_map_info)
-            plt.plot(robot_cell[0], robot_cell[1], c+'o', markersize=16, zorder=5)
+            plt.plot(robot_cell[0], robot_cell[1], c+'o', markersize=12, zorder=5)
 
         plt.axis('off')
-        plt.suptitle('Explored ratio: {:.4g}  Travel distance: {:.4g}'.format(self.env.explored_rate,
+        plt.suptitle('Explored ratio: {:.4g}  Travel distance: {:.4g}      Target distance: {:.4g}'.format(self.env.explored_rate,
                                                                               max([robot.travel_dist for robot in
-                                                                                   self.robot_list])))
+                                                                                   self.robot_list]), check_condition))
         plt.tight_layout()
         # plt.show()
         plt.savefig('{}/{}_{}_samples.png'.format(gifs_path, self.global_step, step), dpi=150)

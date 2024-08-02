@@ -12,7 +12,7 @@ from runner import RLRunner
 from parameter import *
 
 ray.init()
-print("Welcome to RL autonomous exploration!")
+print("Welcome to AD-Flock!")
 
 writer = SummaryWriter(train_path)
 if not os.path.exists(model_path):

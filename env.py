@@ -37,7 +37,8 @@ class Env:
         starts = free[choice]
         
         mean_starts = np.mean(starts, axis = 0)
-        possible_target_idx = np.array(np.argwhere(np.linalg.norm(ground_truth_free - mean_starts, axis = 1))).squeeze()
+        max_dist = np.max(np.linalg.norm(ground_truth_free - mean_starts, axis = 1))
+        possible_target_idx = np.array(np.argwhere(np.linalg.norm(ground_truth_free - mean_starts, axis = 1)>(max_dist -5))).squeeze()
         target_idx = np.random.choice(possible_target_idx)
         self.target = ground_truth_free[target_idx]
         self.robot_locations = np.array(starts)
@@ -54,10 +55,28 @@ class Env:
 
 
     def import_ground_truth(self, episode_index):
-        map_dir = f'maps'
+        # map_dir = f'maps_medium'
+        # map_list = os.listdir(map_dir)
+        # map_index = episode_index % np.size(map_list)
+        # ground_truth = (io.imread(map_dir + '/' + map_list[map_index], 1) * 255).astype(int)
+
+        # ground_truth = block_reduce(ground_truth, 2, np.min)
+
+        # robot_cell = np.array(np.nonzero(ground_truth == 208))
+        # robot_cell = np.array([robot_cell[1, 10], robot_cell[0, 10]])
+
+        # ground_truth = (ground_truth > 150) | ((ground_truth <= 80) & (ground_truth >= 50))
+        # ground_truth = ground_truth * 254 + 1
+
+        # return ground_truth, robot_cell
+        self.test = False
+        if self.test:
+            map_dir = f'maps_test'
+        else:
+            map_dir = f'maps_medium'
         map_list = os.listdir(map_dir)
         map_index = episode_index % np.size(map_list)
-        ground_truth = (io.imread(map_dir + '/' + map_list[map_index], 1) * 255).astype(int)
+        ground_truth = (io.imread(map_dir + '/' + map_list[map_index], 1)).astype(int)
 
         ground_truth = block_reduce(ground_truth, 2, np.min)
 
@@ -83,10 +102,11 @@ class Env:
         done = False
         reward -= 0.5
         reward += (astar_dist_cur_to_target - astar_dist_next_to_target) / (self.ground_truth.shape[0] * self.cell_size/10)
-        if dist_to_target <= 10:
-            reward += 20
-            done = True
-        return reward, done
+        # print(dist_to_target)
+        # if dist_to_target <= 20:
+        #     reward += 20
+        #     done = True
+        return reward
 
     def calculate_reward(self):
         reward = 0

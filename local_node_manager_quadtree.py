@@ -7,7 +7,8 @@ import quads
 
 
 class Local_node_manager:
-    def __init__(self, plot=False):
+    def __init__(self, plot=False, modality="Local"):
+        self.modality = modality
         self.local_nodes_dict = quads.QuadTree((0, 0), 1000, 1000)
         self.plot = plot
         self.target = None
@@ -22,7 +23,7 @@ class Local_node_manager:
 
     def add_node_to_dict(self, coords, local_frontiers, extended_local_map_info, target):
         key = (coords[0], coords[1])
-        node = Local_node(coords, local_frontiers, extended_local_map_info, target)
+        node = Local_node(coords, local_frontiers, extended_local_map_info, target, self.modality)
         self.local_nodes_dict.insert(point=key, data=node)
 
     def update_local_graph(self, robot_location, local_frontiers, local_map_info, extended_local_map_info):
@@ -257,11 +258,11 @@ class Local_node_manager:
 
 
 class Local_node:
-    def __init__(self, coords, local_frontiers, extended_local_map_info, target):
+    def __init__(self, coords, local_frontiers, extended_local_map_info, target, modality="Local"):
         self.coords = coords
         self.utility_range = UTILITY_RANGE
         self.local_frontiers = local_frontiers
-        if np.any(local_frontiers != None):
+        if modality == "Local":
             self.observable_frontiers = self.initialize_observable_frontiers(local_frontiers, extended_local_map_info)
             self.utility = self.observable_frontiers.shape[0] if self.observable_frontiers.shape[0] > MIN_UTILITY else 0
             self.utility_share = [self.utility]
