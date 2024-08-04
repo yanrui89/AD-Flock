@@ -245,6 +245,7 @@ def make_gif(path, n, frame_files, rate):
     print('gif complete\n')
 
     # Remove files
+    print(frame_files)
     for filename in frame_files[:-1]:
         os.remove(filename)
 

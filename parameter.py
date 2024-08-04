@@ -1,4 +1,4 @@
-FOLDER_NAME = 'AD_flock_real_maps_medium_change1'
+FOLDER_NAME = 'AD_flock_cohesion'
 model_path = f'model/{FOLDER_NAME}'
 train_path = f'train/{FOLDER_NAME}'
 gifs_path = f'gifs/{FOLDER_NAME}'

@@ -103,13 +103,32 @@ class Multi_agent_worker:
                 # ind_done_list.append(ind_done)
                 total_reward = individual_reward + ind_nav_rew
                 reward_list.append(total_reward)
-
+                robot_location.append(next_location)
+                # Implement cohesion
                 # FIXME Extract robot.location in an empty array
+
                 # Compute the np.mean
                 # Compute distance from np.mean
                 # Penalise using distance**2
 
                 robot.update_graph(self.env.belief_info, deepcopy(self.env.robot_locations[robot.id]))
+            
+            cohesion_reward_list = []
+            # Implement cohesion
+
+            # Calculate the centroid of the robot locations
+            centroid = np.mean(selected_locations, axis=0)
+
+            # Iterate through the selected locations and rewards to apply cohesion penalty
+            for idx, (next_location, reward) in enumerate(zip(selected_locations, reward_list)):
+                cohesion_penalty = np.linalg.norm(next_location - centroid)
+                
+                # Apply the cohesion penalty if it exceeds 1
+                if cohesion_penalty > 1:
+                    cohesion_reward_list.append((cohesion_penalty / 50))
+                else:
+                    cohesion_reward_list.append(0)
+
 
             # if self.robot_list[0].utility.sum() == 0: # FIXME change to check location of centroid to goal point
             #     done = True
@@ -124,8 +143,8 @@ class Multi_agent_worker:
             if done:
                 team_reward += 40
 
-            for robot, reward in zip(self.robot_list, reward_list):
-                robot.save_reward(reward + team_reward)
+            for robot, reward, cohesion_reward in zip(self.robot_list, reward_list, cohesion_reward_list):
+                robot.save_reward(reward + team_reward - cohesion_reward)
                 robot.update_planning_state(self.env.robot_locations)
                 robot.save_done(done)
 
@@ -163,8 +182,8 @@ class Multi_agent_worker:
         frontiers = get_frontier_in_map(self.env.belief_info)
         frontiers = get_cell_position_from_coords(frontiers, self.env.belief_info).reshape(-1, 2)
         target_cell = get_cell_position_from_coords(self.env.target, self.env.ground_truth_info).reshape(-1, 2)
-        plt.scatter(target_cell[:,0], target_cell[:,1], c='b', s=5)
-        plt.scatter(frontiers[:, 0], frontiers[:, 1], c='r', s=1)
+        plt.scatter(target_cell[:,0], target_cell[:,1], c='b', marker='*', s=15)
+        plt.scatter(frontiers[:, 0], frontiers[:, 1], c='r', s=5)
         for robot in self.robot_list:
             c = color_list[robot.id]
             robot_cell = get_cell_position_from_coords(robot.location, robot.global_map_info)
